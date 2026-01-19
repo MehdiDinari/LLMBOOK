@@ -1,0 +1,83 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    color: #333;
+}
+
+h1 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+#search-box {
+    margin-bottom: 1rem;
+}
+
+#search-box input {
+    width: 300px;
+    padding: 8px;
+    font-size: 1rem;
+}
+
+#search-box button {
+    padding: 8px 12px;
+    font-size: 1rem;
+    margin-left: 8px;
+}
+
+#results {
+    margin-bottom: 1rem;
+}
+
+.result-item {
+    padding: 6px 8px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.result-item:hover {
+    background-color: #f7f7f7;
+}
+
+#chat-section h2 {
+    margin-top: 1rem;
+    font-size: 1.4rem;
+}
+
+#chat-log {
+    border: 1px solid #ddd;
+    background-color: #fafafa;
+    padding: 10px;
+    height: 300px;
+    overflow-y: auto;
+    margin-top: 1rem;
+}
+
+.user-message {
+    text-align: right;
+    margin: 5px 0;
+    color: #1a73e8;
+}
+
+.bot-message {
+    text-align: left;
+    margin: 5px 0;
+    color: #0b8043;
+}
+
+#chat-input {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 8px;
+}
+
+#chat-input input {
+    flex: 1;
+    padding: 8px;
+    font-size: 1rem;
+}
+
+#chat-input button {
+    padding: 8px 12px;
+    font-size: 1rem;
+}

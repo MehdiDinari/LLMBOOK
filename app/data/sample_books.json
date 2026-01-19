@@ -1,0 +1,46 @@
+[
+  {
+    "work_id": "OL0000001",  
+    "title": "Le Petit Prince",
+    "author": "Antoine de Saint-Exupéry",
+    "authors": ["Antoine de Saint-Exupéry"],
+    "description": "L'histoire suit un jeune prince qui visite diverses planètes, dont la Terre, et aborde des thèmes tels que la solitude, l'amitié, l'amour et la perte. Malgré son allure de conte pour enfants, le livre fait des observations sur la vie, les adultes et la nature humaine.",
+    "page_count": 96,
+    "characters": [
+      "Le Petit Prince",
+      "Le narrateur (le pilote)",
+      "Le renard",
+      "La rose"
+    ]
+  },
+  {
+    "work_id": "OL0000002",
+    "title": "Pride and Prejudice",
+    "author": "Jane Austen",
+    "authors": ["Jane Austen"],
+    "description": "Roman de mœurs qui suit l'évolution du personnage d'Elizabeth Bennet, qui apprend les conséquences des jugements hâtifs et vient à apprécier la différence entre la bonté superficielle et la véritable bonté.",
+    "page_count": 432,
+    "characters": [
+      "Elizabeth Bennet",
+      "Fitzwilliam Darcy (Mr. Darcy)",
+      "Jane Bennet",
+      "Mr. Bingley"
+    ]
+  },
+  {
+    "work_id": "OL0000003",
+    "title": "Harry Potter and the Philosopher's Stone",
+    "author": "J. K. Rowling",
+    "authors": ["J. K. Rowling"],
+    "description": "Roman fantastique qui suit Harry Potter, un jeune sorcier qui découvre son héritage magique le jour de ses onze ans. Avec l'aide de ses amis Ron Weasley et Hermione Granger, il affronte le retour du mage noir Lord Voldemort.",
+    "page_count": 223,
+    "characters": [
+      "Harry Potter",
+      "Hermione Granger",
+      "Ron Weasley",
+      "Lord Voldemort",
+      "Albus Dumbledore",
+      "Rubeus Hagrid"
+    ]
+  }
+]

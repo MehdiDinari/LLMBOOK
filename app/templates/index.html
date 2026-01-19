@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatbot Livre</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <h1>Chatbot spécialisé livres</h1>
+    <div id="search-box">
+        <input type="text" id="query" placeholder="Rechercher un livre…" />
+        <button id="search-button">Rechercher</button>
+    </div>
+    <div id="results"></div>
+    <div id="chat-section" style="display: none;">
+        <h2>Conversation sur <span id="book-title"></span></h2>
+        <div id="chat-log"></div>
+        <div id="chat-input">
+            <input type="text" id="user-message" placeholder="Posez votre question…" />
+            <button id="send-button">Envoyer</button>
+        </div>
+    </div>
+    <script>
+        (function () {
+            const searchButton = document.getElementById('search-button');
+            const sendButton = document.getElementById('send-button');
+            const queryInput = document.getElementById('query');
+            const resultsDiv = document.getElementById('results');
+            const chatSection = document.getElementById('chat-section');
+            const chatLog = document.getElementById('chat-log');
+            const userMessageInput = document.getElementById('user-message');
+            const bookTitleSpan = document.getElementById('book-title');
+            let selectedWorkId = null;
+
+            async function search() {
+                const query = queryInput.value.trim();
+                if (!query) return;
+                // fetch search results
+                resultsDiv.innerHTML = '<p>Recherche en cours…</p>';
+                const response = await fetch(`/search?query=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    resultsDiv.innerHTML = '<p>Erreur lors de la recherche.</p>';
+                    return;
+                }
+                const data = await response.json();
+                resultsDiv.innerHTML = '';
+                if (!data.results || data.results.length === 0) {
+                    resultsDiv.innerHTML = '<p>Aucun résultat trouvé.</p>';
+                    return;
+                }
+                data.results.forEach((item) => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    const author = item.author || 'Auteur inconnu';
+                    div.textContent = `${item.title} – ${author}`;
+                    div.addEventListener('click', () => selectBook(item.work_id, item.title));
+                    resultsDiv.appendChild(div);
+                });
+            }
+
+            function selectBook(workId, title) {
+                selectedWorkId = workId;
+                bookTitleSpan.textContent = title;
+                chatLog.innerHTML = '';
+                chatSection.style.display = 'block';
+                userMessageInput.focus();
+            }
+
+            async function send() {
+                const message = userMessageInput.value.trim();
+                if (!message || !selectedWorkId) return;
+                // append user message
+                appendMessage('user', message);
+                userMessageInput.value = '';
+                // call chat endpoint
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            work_id: selectedWorkId,
+                            message: message,
+                        }),
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        appendMessage('bot', data.answer);
+                    } else {
+                        appendMessage('bot', 'Une erreur est survenue.');
+                    }
+                } catch (err) {
+                    appendMessage('bot', 'Impossible de contacter le serveur.');
+                }
+            }
+
+            function appendMessage(sender, text) {
+                const div = document.createElement('div');
+                div.className = sender === 'user' ? 'user-message' : 'bot-message';
+                div.textContent = text;
+                chatLog.appendChild(div);
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }
+
+            searchButton.addEventListener('click', search);
+            sendButton.addEventListener('click', send);
+            // allow pressing Enter to trigger search or send
+            queryInput.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter') {
+                    search();
+                }
+            });
+            userMessageInput.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter') {
+                    send();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
