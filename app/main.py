@@ -27,7 +27,6 @@ import json
 import logging
 import time
 import uuid
-import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -87,14 +86,6 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 # ----------------------------
 CHAT_STORE: Dict[str, Dict[str, List[Dict[str, object]]]] = {}
 
-# Optional API key for external clients (e.g. WordPress integration).
-# When set, the API key can be passed as the ``token`` parameter to
-# the /history, /reset and /chat endpoints. If the provided token
-# equals ``BOOKGPT_API_KEY``, a new chat session will be automatically
-# created on demand. Leaving this unset (the default) means that any
-# unknown token will result in a new per-user session as well.
-API_KEY = os.environ.get("BOOKGPT_API_KEY")
-
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
@@ -126,51 +117,21 @@ def create_session() -> Dict[str, str]:
 
 @app.get("/history")
 def get_history(work_id: str, token: str) -> Dict[str, object]:
-    """Return the per-user chat history for a given book.
-
-    Historically, this endpoint only accepted tokens previously issued via
-    the `/session` endpoint. In practice, external clients such as a
-    WordPress plugin may pass a single API key in lieu of a per-session
-    token. To make the service more resilient, we no longer reject
-    unknown tokens. If a token is not found in the in-memory store, a
-    new session is created automatically. If the ``BOOKGPT_API_KEY``
-    environment variable is set and the provided token matches it, a
-    session is created on demand as well. Otherwise, the provided
-    token becomes the key under which chat history is stored.
-    """
-    if not token:
+    """Return the per-user chat history for a given book."""
+    if not token or token not in CHAT_STORE:
         raise HTTPException(status_code=401, detail="Invalid token")
-    # If we don't know this token yet, create a new session mapping
-    if token not in CHAT_STORE:
-        # Only validate against API_KEY if it is set; otherwise accept any
-        # token to bootstrap a session.
-        if API_KEY and token != API_KEY:
-            # Accept unknown tokens by initialising an empty history
-            CHAT_STORE[token] = {}
-        else:
-            CHAT_STORE[token] = {}
     return {"work_id": work_id, "messages": CHAT_STORE[token].get(work_id, [])}
 
 
 @app.post("/reset")
 def reset_history(payload: Dict[str, str]) -> Dict[str, str]:
-    """Reset the per-user chat history for a given book.
-
-    When the supplied token is unknown, a new chat session is created on
-    the fly rather than raising an Unauthorized error. This makes the
-    endpoint compatible with stateless clients that do not first call
-    ``/session`` to obtain a token. The ``work_id`` parameter is still
-    required and a 400 error is returned if it is missing.
-    """
+    """Reset the per-user chat history for a given book."""
     token = payload.get("token")
     work_id = payload.get("work_id")
-    if not token:
+    if not token or token not in CHAT_STORE:
         raise HTTPException(status_code=401, detail="Invalid token")
     if not work_id:
         raise HTTPException(status_code=400, detail="work_id required")
-    # Create a new session if necessary
-    if token not in CHAT_STORE:
-        CHAT_STORE[token] = {}
     CHAT_STORE[token][work_id] = []
     return {"status": "ok"}
 
@@ -421,14 +382,8 @@ def chat_with_book(payload: Dict[str, str]) -> Dict[str, object]:
     message = payload.get("message")
     work_id = payload.get("work_id")
 
-    # Automatically create a session if the token is unknown but supplied.
-    # This ensures that clients who do not call /session explicitly (e.g.
-    # WordPress integrations) can still interact with the chatbot without
-    # triggering an Unauthorized error.
-    if not token:
+    if not token or token not in CHAT_STORE:
         raise HTTPException(status_code=401, detail="Invalid token")
-    if token not in CHAT_STORE:
-        CHAT_STORE[token] = {}
     if not message or not work_id:
         raise HTTPException(status_code=400, detail="Both 'message' and 'work_id' are required.")
 
@@ -475,58 +430,8 @@ def chat_with_book(payload: Dict[str, str]) -> Dict[str, object]:
             t = t.rsplit(" ", 1)[0]
         return t + "…"
 
-    # Respond to simple greetings to make the chatbot feel more natural
-    if any(term in lower_msg for term in ["bonjour", "salut", "coucou", "hey", "hello", "hi"]):
-        if lang == "en":
-            answer = "Hello! I'm your book assistant. Feel free to ask me anything about the book."
-        else:
-            answer = "Bonjour ! Je suis votre assistant spécialisé sur les livres. N'hésitez pas à me poser des questions sur l'ouvrage."
-
-    # Acknowledge thanks
-    elif any(term in lower_msg for term in ["merci", "thank you", "thanks"]):
-        answer = "You're welcome!" if lang == "en" else "Avec plaisir !"
-
-    # Introduce the assistant when asked
-    elif any(term in lower_msg for term in ["qui es-tu", "qui êtes-vous", "who are you", "what are you"]):
-        answer = (
-            "I'm a virtual assistant designed to answer questions about books. Ask me about the author, characters, themes or summaries!"
-            if lang == "en"
-            else "Je suis un assistant virtuel conçu pour répondre à vos questions sur les livres. Demandez-moi des informations sur l'auteur, les personnages, les thèmes ou un résumé !"
-        )
-
-    # Explain capabilities when asked what the assistant can do
-    elif any(term in lower_msg for term in ["que peux-tu faire", "qu'est-ce que tu fais", "what can you do", "what do you do"]):
-        answer = (
-            "I can help you explore details about a book's summary, authors, characters, themes and more."
-            if lang == "en"
-            else "Je peux vous aider à explorer les détails d'un livre : résumé, auteurs, personnages, thèmes et bien d'autres."
-        )
-
-    # Determine if user asks for publication date
-    elif any(term in lower_msg for term in ["publié", "publication", "published", "publication date", "date de publication", "année de publication", "year"]):
-        pub_date: Optional[str] = None
-        # Try to get first publish date from the work data
-        pub_date = data.get("first_publish_date") or data.get("created", {}).get("value")
-        # Attempt to extract year if date is a full datetime string
-        year: Optional[str] = None
-        if isinstance(pub_date, str) and len(pub_date) >= 4:
-            # The date may be in formats like '2001', '2001-05-04T00:00:00.000000'
-            year = pub_date[:4]
-        if year:
-            answer = (
-                f"The book {title} was first published in {year}."
-                if lang == "en"
-                else f"Le livre {title} a été publié pour la première fois en {year}."
-            )
-        else:
-            answer = (
-                f"Sorry, I don't have the publication date for {title}."
-                if lang == "en"
-                else f"Désolé, je n'ai pas la date de publication pour {title}."
-            )
-
     # Determine if user asks for main characters
-    elif any(term in lower_msg for term in ["personnage", "personnages", "character", "characters", "main character", "principaux", "principal"]):
+    if any(term in lower_msg for term in ["personnage", "personnages", "character", "characters", "main character", "principaux", "principal"]):
         if local_characters:
             if lang == "en":
                 answer = f"Main characters in {title}: {', '.join(local_characters)}"
